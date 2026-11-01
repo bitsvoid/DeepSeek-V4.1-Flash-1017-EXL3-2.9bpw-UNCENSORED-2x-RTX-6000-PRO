@@ -3,7 +3,7 @@
 hf download dealignai/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED --local-dir ~/models/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED
 cd ~/models/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED && git clone https://github.com/essefree/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED-2x-RTX-6000-PRO.git && && ./recipe/serve.sh
 
-Serve a Mia-layout EXL3 2.9 bpw quant of DeepSeek-V4.1-Flash-**1017** (routed experts K=3 mul1,
+Serve a DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED EXL3 2.9 bpw quant of DeepSeek-V4.1-Flash-**1017** (routed experts K=3 mul1,
 K=2 on layers 18–22; EXL3 attention, shared experts, lm_head; stock int4 Engram) through the serving
 stack of [diffbot/DeepSeek-V4.1-Flash-EXL3-3bpw-2x-RTX-PRO-6000](https://huggingface.co/diffbot/DeepSeek-V4.1-Flash-EXL3-3bpw-2x-RTX-PRO-6000):
 their vLLM image (nightly-5555a2d8 + 1017 patches), the patched `vllm-exl3` plugin with host-expert

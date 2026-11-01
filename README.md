@@ -1,7 +1,7 @@
 # dealignai/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED on diffbot's 2× RTX PRO 6000 stack
 
 hf download dealignai/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED --local-dir ~/models/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED
-cd ~/models/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED && git clone https://github.com/essefree/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED-2x-RTX-6000-PRO.git recipe && ./recipe/serve.sh
+cd ~/models/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED && git clone https://github.com/bitsvoid/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED-2x-RTX-6000-PRO.git recipe && ./recipe/serve.sh
 
 Serve a DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED EXL3 2.9 bpw quant of DeepSeek-V4.1-Flash-**1017** (routed experts K=3 mul1,
 K=2 on layers 18–22; EXL3 attention, shared experts, lm_head; stock int4 Engram) through the serving
@@ -13,7 +13,7 @@ prefill all-reduce, and optionally their CPU host-expert runtime.
 > **Status: designed and assembled offline, not yet booted.** Everything below that touches a GPU
 > (the FP8 conversion of a few modules, the K=2 kernel build, the boot itself) runs on the serving box.
 
-This is the second recipe for this quant. The first, [DeepSeek-v4.1-Flash-EXL3-2x-RTX6000Pro](https://github.com/essefree/DeepSeek-v4.1-Flash-EXL3-2x-RTX6000Pro),
+This is the second recipe for this quant. The first, [DeepSeek-v4.1-Flash-EXL3-2x-RTX6000Pro](https://github.com/bitsvoid/DeepSeek-v4.1-Flash-EXL3-2x-RTX6000Pro),
 ports Mia's 2× DGX Spark recipe to the two cards and serves the same files; it works but decodes at
 about half the speed of diffbot's pack on the same hardware.
 
@@ -97,7 +97,7 @@ cd ~/models/<name>/recipe
 **From this checkout**, pointing at the raw quant or at a served pack, local or on Hugging Face:
 
 ```bash
-git clone https://github.com/essefree/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED-2x-RTX-6000-PRO.git && cd DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED-2x-RTX-6000-PRO
+git clone https://github.com/bitsvoid/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED-2x-RTX-6000-PRO.git && cd DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED-2x-RTX-6000-PRO
 ./serve.sh --model /data/models/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED-2x-RTX-6000-PRO     # the raw quant: converted + assembled first
 ./serve.sh --model dealignai/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED                                          # a Hugging Face repo (fetched into ./models/)
 ```

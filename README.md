@@ -1,7 +1,7 @@
 # dealignai/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED on diffbot's 2× RTX PRO 6000 stack
 
 hf download dealignai/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED --local-dir ~/models/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED
-cd ~/models/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED && git clone https://github.com/essefree/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED-2x-RTX-6000-PRO.git && && ./recipe/serve.sh
+cd ~/models/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED && git clone https://github.com/essefree/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED-2x-RTX-6000-PRO.git recipe && && ./recipe/serve.sh
 
 Serve a DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-UNCENSORED EXL3 2.9 bpw quant of DeepSeek-V4.1-Flash-**1017** (routed experts K=3 mul1,
 K=2 on layers 18–22; EXL3 attention, shared experts, lm_head; stock int4 Engram) through the serving

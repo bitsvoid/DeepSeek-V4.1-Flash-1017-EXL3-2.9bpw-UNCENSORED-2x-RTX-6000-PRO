@@ -11,8 +11,8 @@
 set -euo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ROOT=$(cd "$HERE/.." && pwd)
-[ -f "$ROOT/.env" ] && { set -a; source "$ROOT/.env"; set +a; }
-: "${DIFFBOT:?set DIFFBOT=<path to the diffbot pack> in .env}"
+[ -f "$ROOT/.env" ] && { set -a; source "$ROOT/.env"; set +a; }   # optional
+DIFFBOT=${DIFFBOT:-$ROOT/diffbot}   # diffbot's pack download (recipe/ is what is used; prepare_pack.py fetches it)
 IMAGE=${IMAGE:-dsv41-flash-1017-exl3-3bpw-sm120}
 K=$DIFFBOT/recipe/kernels
 [ -d "$K/xmoe" ] || { echo "no $K/xmoe: DIFFBOT must point at a full download of diffbot's pack (recipe/ included)"; exit 1; }

@@ -68,33 +68,66 @@ VRAM (the cold-path prefill kernel exists for K=3 only), which the plan enforces
 | `tools/make_plan.py` | diffbot's host-expert plan with the K=2 layers (and the drafter) kept in VRAM |
 | `tools/vendor/` | `vllm-exl3` pack tools at commit `d3cfd394` (AGPL-3.0, see `NOTICE`) |
 | `kernels/add_k2_mul1.py`, `kernels/build.sh` | K=2 mul1 instances for `xmoe` / `xmoe_do_i8`, built with diffbot's scripts in their image |
-| `serve.sh` | runs diffbot's `recipe/serve/serve.sh` with this pack, plan, kernels and the knobs that must differ |
+| `serve.sh` | runs diffbot's `recipe/serve/serve.sh` with this pack, plan, kernels and the knobs that must differ; fetches/builds what is missing on the first run |
+| `tools/resolve_model.py` | `MODEL=<dir \| org/name>`, raw quant vs served pack, the in-pack default (`<pack>/recipe`) |
+| `tools/make_hf_pack.py`, `tools/pack_readme.py` | package a served pack for Hugging Face: `recipe/` inside it + the model card; prints the upload command |
 | `overlay/sitecustomize.py` | runs diffbot's sitecustomize, then two hooks this quant needs: vLLM's block-FP8 shared-expert padding skips EXL3 tensors, and vllm-exl3 loads EXL3 modules on a `ReplicatedLinear` (the indexer `wq_b`) unsharded (its TP geometry comes from `LinearBase`, which carries the global TP size even for replicated layers) |
-| `tests/` | offline checks against a header-only mock of the quant |
+| `tests/` | offline checks against a header-only mock of the quant (`fetch_headers.py` rebuilds the fixture shards from the public repos) |
 
 ## Quick start (on the box)
 
-Prerequisites: diffbot's `recipe/` (from their pack download), their image built (`bash recipe/docker/build.sh`),
-their int4 Engram shards 47/48 somewhere on disk (`ENGRAM_DIR`; default the pack folder, or e.g. the first
-recipe's `engram-int4`, so they are not downloaded twice), and this quant.
+Prerequisites: two sm_120 GPUs with 96 GB, a CUDA 13 driver, Docker with the NVIDIA container toolkit, ~260 GiB of
+free host RAM, the Hugging Face CLI (`pip install -U "huggingface_hub[hf_transfer]"`). Everything else is fetched or
+built on the first run: diffbot's `recipe/` (into `./diffbot`, unless `DIFFBOT=` in `.env` points at a download of
+their pack you have), their serving image (their `docker/build.sh`; long, it compiles ExLlamaV3 for sm_120a), their
+int4 Engram shards 47/48 (~103 GiB, unless the pack carries them or `ENGRAM_DIR` has a copy, e.g. the first recipe's
+`engram-int4`), the K=2 kernels.
+
+**From the served pack on Hugging Face** (the recipe is inside it as `recipe/`; nothing to convert):
+
+```bash
+hf download <org>/<name> --local-dir ~/models/<name> --max-workers 8
+cd ~/models/<name>/recipe
+./serve.sh                                              # .env optional (cp env.example .env to change knobs)
+```
+
+**From this checkout**, pointing at the raw quant or at a served pack, local or on Hugging Face:
 
 ```bash
 git clone https://github.com/essefree/DeepSeek-v4.1-Flash-EXL3-2.9bpw-diffbot-stack.git && cd DeepSeek-v4.1-Flash-EXL3-2.9bpw-diffbot-stack
-cp env.example .env                                     # DIFFBOT (and MODEL, or pass --model)
-./serve.sh --model /data/models/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw
+./serve.sh --model /data/models/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw     # the raw quant: converted + assembled first
+./serve.sh --model <org>/<name>                                           # a Hugging Face repo (fetched into ./models/)
 ```
 
 The API has no authentication unless `API_KEY=…` is set (then clients send it as the Bearer token).
 diffbot's `serve.sh` requires a key, so the wrapper runs a copy of it with the key made optional
-(`tools/patch_diffbot_serve.py`, regenerated when their script changes).
+(`tools/patch_diffbot_serve.py`, regenerated on every start).
 
-`--model` takes the quant the way the first recipe does: a local directory, or a Hugging Face repo id
-(`essefree/my-exl3-quant`, fetched into `./models/`); `MODEL=` in `.env` is the same thing. The first run
-does the whole path: fetches the stock 1017 drafter (7.4 GiB), converts the few modules in diffbot's image
-(GPU, ~30 min once), assembles the pack as `<quant>-served` next to the quant (hardlinks, so ~25 GB of new
-data), builds the K=2 kernels into diffbot's `recipe/kernels/build/`, then serves on `:8000`. Later runs go
+`--model` (or `MODEL=` in `.env`) is a local directory or a Hugging Face repo id, and either the raw quant or a
+served pack; `tools/resolve_model.py` tells them apart (`PACK_INFO.json`, or a `config.json` already in the plugin's
+vocabulary). With the raw quant the first run fetches the stock 1017 drafter (7.4 GiB), converts the few modules in
+diffbot's image (GPU, ~30 min once) and assembles the pack as `<quant>-served` next to the quant (hardlinks, so ~25 GB
+of new data). With a served pack nothing is converted: missing Engram shards are completed and the plan installed.
+Then the K=2 kernels are built into diffbot's `recipe/kernels/build/` and it serves on `:8000`. Later runs go
 straight to serving. The steps also run on their own: `./prepare_pack.py --model ...`, `bash kernels/build.sh`;
 `NO_AUTO_PREPARE=1 ./serve.sh` only checks.
+
+## Hosting the pack on Hugging Face
+
+The served pack is what gets hosted (the raw quant would make every downloader convert), with this recipe copied in
+as `recipe/`, the way diffbot's pack ships theirs:
+
+```bash
+./prepare_pack.py --model /data/models/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw          # once; -> <quant>-served
+python3 tools/make_hf_pack.py /data/models/DeepSeek-V4.1-Flash-1017-EXL3-2.9bpw-served --repo <org>/<name> [--no-engram]
+```
+
+`make_hf_pack.py` copies the tracked files of this checkout into `<pack>/recipe` (no `.git`, `.env`, caches or
+downloads), writes the model card `<pack>/README.md` from `tools/pack_readme.py` (facts read from the pack; edit it,
+`--status` sets its status line, `--force-readme` regenerates), and prints the upload command: `hf upload-large-folder`
+with exclusions for local state. `--no-engram` leaves diffbot's Engram shards 47/48 (103 GiB of their data) out of
+the upload; downloaders then fetch them from diffbot's repo on the first run. `PACK_INFO.json` and
+`convert_manifest.json` go up as provenance (they name the paths the pack was assembled from).
 
 ## Tests (no GPU)
 
@@ -104,9 +137,16 @@ stock drafter from real shard headers, runs `prepare_pack.py` on it and checks t
 rewritten (40 layer shards for `wo_a`, shard 43 for lm_head and the drafter leftovers), 154 dense EXL3 modules keyed by
 vLLM prefix (K 4/5/6), drafter and Engram names present, no stale slices.
 
+`tests/test_pack_mode.py` takes that pack the way it is hosted: copies the recipe into it (`make_hf_pack.py`), removes the
+Engram shards, and runs `<pack>/recipe/prepare_pack.py` with no `--model`: the pack is found as the parent, the shards
+linked back (or refused with `--skip-download` when nobody has them), the plan installed, nothing converted.
+
 ```bash
-python3 tests/test_offline.py --quant-meta <dir with the quant's json files> --stock-drafter <dir> --engram <dir>
-python3 tests/test_sitecustomize_hook.py   # the shared-expert padding hook, against a fake vLLM model module
+python3 tests/fetch_headers.py diffbot/DeepSeek-V4.1-Flash-EXL3-3bpw-2x-RTX-PRO-6000 <engram dir> model-00047-of-00048.safetensors model-00048-of-00048.safetensors
+python3 tests/fetch_headers.py deepseek-ai/DeepSeek-V4.1-Flash-1017 <drafter dir> model-00044-of-00048.safetensors model-00045-of-00048.safetensors model-00046-of-00048.safetensors --revision 1bae0e1088993b9b82de08f59de5be5a34e42170
+python3 tests/test_offline.py --quant-meta <dir with the quant's json files> --stock-drafter <drafter dir> --engram <engram dir>
+python3 tests/test_pack_mode.py --quant-meta <dir> --stock-drafter <drafter dir> --engram <engram dir>
+python3 tests/test_sitecustomize_hook.py   # the vLLM / vllm-exl3 hooks, against fake modules
 ```
 
 ## Open items (box-verified)

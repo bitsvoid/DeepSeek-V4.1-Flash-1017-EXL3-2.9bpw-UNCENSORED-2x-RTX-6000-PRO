@@ -6,3 +6,7 @@ __pycache__/
 *.pyc
 *.so
 .cache/
+models/
+diffbot/
+drafter-1017/
+kernels/tree/
